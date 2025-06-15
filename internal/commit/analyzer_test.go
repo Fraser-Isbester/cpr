@@ -151,7 +151,7 @@ index abc123..def456 100644
 			files := []string{"main.go", "util.go"}
 			analyzer := commit.NewAnalyzer(diff, files)
 			summary := analyzer.GenerateSummary()
-			
+
 			Expect(summary).To(ContainSubstring("## Summary"))
 			Expect(summary).To(ContainSubstring("## Changed Files"))
 			Expect(summary).To(ContainSubstring("`main.go`"))

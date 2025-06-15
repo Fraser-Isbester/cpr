@@ -23,8 +23,8 @@ const (
 )
 
 type Analyzer struct {
-	diff          string
-	changedFiles  []string
+	diff         string
+	changedFiles []string
 }
 
 func NewAnalyzer(diff string, changedFiles []string) *Analyzer {
@@ -38,7 +38,7 @@ func (a *Analyzer) GenerateTitle() string {
 	commitType := a.detectCommitType()
 	scope := a.detectScope()
 	description := a.generateDescription()
-	
+
 	if scope != "" {
 		return fmt.Sprintf("%s(%s): %s", commitType, scope, description)
 	}
@@ -47,27 +47,27 @@ func (a *Analyzer) GenerateTitle() string {
 
 func (a *Analyzer) GenerateSummary() string {
 	var summary strings.Builder
-	
+
 	summary.WriteString("## Summary\n\n")
-	
+
 	changes := a.analyzeChanges()
 	for _, change := range changes {
 		summary.WriteString(fmt.Sprintf("- %s\n", change))
 	}
-	
+
 	if len(a.changedFiles) > 0 {
 		summary.WriteString("\n## Changed Files\n\n")
 		for _, file := range a.changedFiles {
 			summary.WriteString(fmt.Sprintf("- `%s`\n", file))
 		}
 	}
-	
+
 	return summary.String()
 }
 
 func (a *Analyzer) detectCommitType() CommitType {
 	lowerDiff := strings.ToLower(a.diff)
-	
+
 	testFilePattern := regexp.MustCompile(`(?i)(_test\.go|\.test\.|spec\.|test/)`)
 	hasTestFiles := false
 	for _, file := range a.changedFiles {
@@ -79,19 +79,19 @@ func (a *Analyzer) detectCommitType() CommitType {
 	if hasTestFiles && !a.hasNonTestChanges() {
 		return TypeTest
 	}
-	
+
 	if a.hasFilePattern(`(?i)(readme|\.md$|docs/)`) {
 		return TypeDocs
 	}
-	
+
 	if a.hasFilePattern(`(?i)(makefile|dockerfile|\.yml$|\.yaml$|go\.mod|go\.sum|package\.json)`) {
 		return TypeBuild
 	}
-	
+
 	if a.hasFilePattern(`(?i)(\.github/|\.circleci/|\.travis|jenkins)`) {
 		return TypeCI
 	}
-	
+
 	bugPatterns := []string{
 		`fix\s*\(`,
 		`bug\s*fix`,
@@ -107,7 +107,7 @@ func (a *Analyzer) detectCommitType() CommitType {
 			return TypeFix
 		}
 	}
-	
+
 	perfPatterns := []string{
 		`performance`,
 		`optimize`,
@@ -120,7 +120,7 @@ func (a *Analyzer) detectCommitType() CommitType {
 			return TypePerf
 		}
 	}
-	
+
 	refactorPatterns := []string{
 		`refactor`,
 		`rename`,
@@ -134,12 +134,12 @@ func (a *Analyzer) detectCommitType() CommitType {
 			return TypeRefactor
 		}
 	}
-	
-	if strings.Contains(lowerDiff, "+func") || strings.Contains(lowerDiff, "+type") || 
-	   strings.Contains(lowerDiff, "+struct") || strings.Contains(lowerDiff, "+interface") {
+
+	if strings.Contains(lowerDiff, "+func") || strings.Contains(lowerDiff, "+type") ||
+		strings.Contains(lowerDiff, "+struct") || strings.Contains(lowerDiff, "+interface") {
 		return TypeFeat
 	}
-	
+
 	return TypeFeat
 }
 
@@ -147,12 +147,12 @@ func (a *Analyzer) detectScope() string {
 	if len(a.changedFiles) == 0 {
 		return ""
 	}
-	
+
 	commonPrefixes := make(map[string]int)
 	for _, file := range a.changedFiles {
 		dir := filepath.Dir(file)
 		parts := strings.Split(dir, "/")
-		
+
 		for i, part := range parts {
 			if part == "internal" || part == "pkg" || part == "cmd" {
 				if i+1 < len(parts) {
@@ -162,12 +162,12 @@ func (a *Analyzer) detectScope() string {
 				break
 			}
 		}
-		
+
 		if strings.HasPrefix(file, "cmd/") {
 			commonPrefixes["cli"]++
 		}
 	}
-	
+
 	var maxScope string
 	maxCount := 0
 	for scope, count := range commonPrefixes {
@@ -176,18 +176,18 @@ func (a *Analyzer) detectScope() string {
 			maxCount = count
 		}
 	}
-	
+
 	return maxScope
 }
 
 func (a *Analyzer) generateDescription() string {
 	commitType := a.detectCommitType()
-	
+
 	primaryChanges := a.analyzePrimaryChanges()
 	if len(primaryChanges) > 0 {
 		return primaryChanges[0]
 	}
-	
+
 	switch commitType {
 	case TypeFeat:
 		return "add new functionality"
@@ -212,10 +212,10 @@ func (a *Analyzer) generateDescription() string {
 
 func (a *Analyzer) analyzePrimaryChanges() []string {
 	var changes []string
-	
+
 	funcPattern := regexp.MustCompile(`^\+func\s+(\w+)`)
 	typePattern := regexp.MustCompile(`^\+type\s+(\w+)`)
-	
+
 	lines := strings.Split(a.diff, "\n")
 	for _, line := range lines {
 		if matches := funcPattern.FindStringSubmatch(line); len(matches) > 1 {
@@ -224,29 +224,29 @@ func (a *Analyzer) analyzePrimaryChanges() []string {
 			changes = append(changes, fmt.Sprintf("add %s type", matches[1]))
 		}
 	}
-	
+
 	if len(changes) > 3 {
 		return changes[:3]
 	}
-	
+
 	return changes
 }
 
 func (a *Analyzer) analyzeChanges() []string {
 	changes := a.analyzePrimaryChanges()
-	
+
 	if a.hasFilePattern(`go\.mod`) {
 		changes = append(changes, "Update dependencies")
 	}
-	
+
 	if a.hasFilePattern(`(?i)test`) {
 		changes = append(changes, "Add or update tests")
 	}
-	
+
 	if len(changes) == 0 {
 		changes = append(changes, "Various improvements and updates")
 	}
-	
+
 	return changes
 }
 

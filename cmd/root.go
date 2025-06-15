@@ -50,94 +50,94 @@ func init() {
 
 func createPR() error {
 	repo := git.NewRepository("")
-	
+
 	currentBranch, err := repo.CurrentBranch()
 	if err != nil {
 		return fmt.Errorf("failed to get current branch: %w", err)
 	}
-	
+
 	if currentBranch == "HEAD" {
 		return fmt.Errorf("in detached HEAD state, please checkout a branch")
 	}
-	
+
 	defaultBranch, err := repo.DefaultBranch()
 	if err != nil {
 		return fmt.Errorf("failed to get default branch: %w", err)
 	}
-	
+
 	if currentBranch == defaultBranch {
 		return fmt.Errorf("cannot create PR from default branch '%s'", defaultBranch)
 	}
-	
+
 	if verbose {
 		fmt.Printf("Current branch: %s\n", currentBranch)
 		fmt.Printf("Default branch: %s\n", defaultBranch)
 	}
-	
+
 	diff, err := repo.DiffAgainstDefault()
 	if err != nil {
 		return fmt.Errorf("failed to get diff: %w", err)
 	}
-	
+
 	if diff == "" {
 		return fmt.Errorf("no changes detected between %s and %s", currentBranch, defaultBranch)
 	}
-	
+
 	changedFiles, err := repo.GetChangedFiles()
 	if err != nil {
 		return fmt.Errorf("failed to get changed files: %w", err)
 	}
-	
+
 	analyzer := commit.NewAnalyzer(diff, changedFiles)
-	
+
 	if title == "" {
 		title = analyzer.GenerateTitle()
 		if verbose {
 			fmt.Printf("Generated title: %s\n", title)
 		}
 	}
-	
+
 	if body == "" {
 		body = analyzer.GenerateSummary()
 		if verbose {
 			fmt.Printf("Generated body:\n%s\n", body)
 		}
 	}
-	
+
 	remoteURL, err := repo.GetRemoteURL()
 	if err != nil {
 		return fmt.Errorf("failed to get remote URL: %w", err)
 	}
-	
+
 	owner, repoName, err := github.ParseGitRemoteURL(remoteURL)
 	if err != nil {
 		return fmt.Errorf("failed to parse remote URL: %w", err)
 	}
-	
+
 	if verbose {
 		fmt.Printf("Repository: %s/%s\n", owner, repoName)
 	}
-	
+
 	// Push the current branch to origin if needed
 	if err := repo.PushCurrentBranch(); err != nil {
 		if verbose {
 			fmt.Printf("Note: %v\n", err)
 		}
 	}
-	
+
 	token, err := github.GetToken()
 	if err != nil {
 		return err
 	}
-	
+
 	client := github.NewClient(token)
-	
+
 	pr, err := client.CreatePullRequest(owner, repoName, title, body, currentBranch, defaultBranch, draft)
 	if err != nil {
 		return fmt.Errorf("failed to create pull request: %w", err)
 	}
-	
+
 	fmt.Printf("Pull request created: %s\n", pr.GetHTMLURL())
-	
+
 	return nil
 }
