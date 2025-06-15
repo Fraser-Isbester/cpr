@@ -80,6 +80,9 @@ func createPR() error {
 	}
 
 	if diff == "" {
+		if verbose {
+			fmt.Printf("No changes detected between %s and %s\n", currentBranch, defaultBranch)
+		}
 		return fmt.Errorf("no changes detected between %s and %s", currentBranch, defaultBranch)
 	}
 
@@ -132,12 +135,31 @@ func createPR() error {
 
 	client := github.NewClient(token)
 
-	pr, err := client.CreatePullRequest(owner, repoName, title, body, currentBranch, defaultBranch, draft)
-	if err != nil {
-		return fmt.Errorf("failed to create pull request: %w", err)
+	// Check for PR template
+	template, err := client.GetPullRequestTemplate(owner, repoName)
+	if err != nil && verbose {
+		fmt.Printf("Failed to fetch PR template: %v\n", err)
 	}
 
-	fmt.Printf("Pull request created: %s\n", pr.GetHTMLURL())
+	// Apply template if found
+	if template != "" {
+		if verbose {
+			fmt.Printf("Found PR template, applying...\n")
+		}
+		body = github.ApplyTemplate(template, title, body)
+	}
+
+	// Create or update PR
+	pr, updated, err := client.CreateOrUpdatePullRequest(owner, repoName, title, body, currentBranch, defaultBranch, draft)
+	if err != nil {
+		return fmt.Errorf("failed to create/update pull request: %w", err)
+	}
+
+	if updated {
+		fmt.Printf("Pull request updated: %s\n", pr.GetHTMLURL())
+	} else {
+		fmt.Printf("Pull request created: %s\n", pr.GetHTMLURL())
+	}
 
 	return nil
 }
