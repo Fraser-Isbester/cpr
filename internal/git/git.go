@@ -113,6 +113,20 @@ func (r *Repository) GetChangedFiles() ([]string, error) {
 	return files, nil
 }
 
+func (r *Repository) PushCurrentBranch() error {
+	currentBranch, err := r.CurrentBranch()
+	if err != nil {
+		return fmt.Errorf("failed to get current branch: %w", err)
+	}
+	
+	_, err = r.runGitCommand("push", "-u", "origin", currentBranch)
+	if err != nil {
+		return fmt.Errorf("failed to push branch: %w", err)
+	}
+	
+	return nil
+}
+
 func (r *Repository) runGitCommand(args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	if r.path != "" {

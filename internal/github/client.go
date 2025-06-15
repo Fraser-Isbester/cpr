@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/google/go-github/v66/github"
@@ -57,7 +58,23 @@ func GetToken() (string, error) {
 		return token, nil
 	}
 	
-	return "", fmt.Errorf("GitHub token not found. Please set GITHUB_TOKEN or GH_TOKEN environment variable")
+	cmd := exec.Command("gh", "auth", "status")
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("not authenticated. Please run 'gh auth login' or set GITHUB_TOKEN environment variable")
+	}
+	
+	cmd = exec.Command("gh", "auth", "token")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to get token from gh CLI: %w", err)
+	}
+	
+	token = strings.TrimSpace(string(output))
+	if token == "" {
+		return "", fmt.Errorf("gh CLI returned empty token")
+	}
+	
+	return token, nil
 }
 
 func ParseGitRemoteURL(remoteURL string) (owner string, repo string, err error) {

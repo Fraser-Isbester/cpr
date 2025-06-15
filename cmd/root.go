@@ -118,6 +118,13 @@ func createPR() error {
 		fmt.Printf("Repository: %s/%s\n", owner, repoName)
 	}
 	
+	// Push the current branch to origin if needed
+	if err := repo.PushCurrentBranch(); err != nil {
+		if verbose {
+			fmt.Printf("Note: %v\n", err)
+		}
+	}
+	
 	token, err := github.GetToken()
 	if err != nil {
 		return err
